@@ -1,0 +1,44 @@
+name: Release Windows Binary
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release_windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88.0
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup OpenSSL environment
+        run: |
+          echo "OPENSSL_DIR=$env:OPENSSL_DIR" >> $env:GITHUB_ENV
+          echo "OPENSSL_LIB_DIR=$env:OPENSSL_DIR\lib\VC\$env:RUNNER_ARCH\MD" >> $env:GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=$env:OPENSSL_DIR\include" >> $env:GITHUB_ENV
+        env:
+          OPENSSL_DIR: C:\Program Files\OpenSSL
+
+      - name: Build release binary
+        run: cargo build --locked --release --package opensovd-cda
+
+      - name: Create GitHub Release and upload binary
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/release/opensovd-cda.exe
+          generate_release_notes: true
