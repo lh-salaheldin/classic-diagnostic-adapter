@@ -1,0 +1,14 @@
+services:
+  cda:
+    build:
+      context: ..
+      dockerfile: testcontainer/cda/Dockerfile
+    network_mode: host
+    volumes:
+      - ./odx/Custom.mdd:/app/odx/Custom.mdd:ro
+      - ./cda-test-config.toml:/app/cda-test-config.toml:ro
+    environment:
+      - RUST_LOG=debug
+      - CDA_CONFIG_FILE=/app/cda-test-config.toml
+    entrypoint: ["/app/opensovd-cda", "--tester-address", "x.x.x.x"]
+    command: ["-d", "/app/odx"]
