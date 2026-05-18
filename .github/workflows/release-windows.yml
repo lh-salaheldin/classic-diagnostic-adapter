@@ -26,16 +26,11 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
-      - name: Setup OpenSSL environment
-        run: |
-          echo "OPENSSL_DIR=$env:OPENSSL_DIR" >> $env:GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=$env:OPENSSL_DIR\lib\VC\$env:RUNNER_ARCH\MD" >> $env:GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=$env:OPENSSL_DIR\include" >> $env:GITHUB_ENV
-        env:
-          OPENSSL_DIR: C:\Program Files\OpenSSL
+      - name: Install Perl (required for vendored OpenSSL build)
+        uses: shogo82148/actions-setup-perl@v1
 
       - name: Build release binary
-        run: cargo build --locked --release --package opensovd-cda
+        run: cargo build --locked --release --package opensovd-cda --no-default-features --features openssl-vendored
 
       - name: Create GitHub Release and upload binary
         uses: softprops/action-gh-release@v2
