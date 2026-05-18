@@ -241,7 +241,7 @@ pub fn into_db_protocol(
         .find(|p| {
             p.diag_layer()
                 .and_then(|dl| dl.short_name())
-                .is_some_and(|sn| sn == protocol.value())
+                .is_some_and(|sn| protocol.matches(sn))
         })
         .map(datatypes::Protocol)
         .ok_or_else(|| {

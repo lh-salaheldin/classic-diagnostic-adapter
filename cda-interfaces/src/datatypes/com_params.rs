@@ -276,6 +276,9 @@ impl TryFrom<String> for RetryPolicy {
             Ok(RetryPolicy::ContinueUntilTimeout)
         } else if lc.contains("unlimited") {
             Ok(RetryPolicy::ContinueUnlimited)
+        } else if lc.contains("disabled") {
+            // ISO 14229: disabled retry → best CDA approximation
+            Ok(RetryPolicy::ContinueUntilTimeout)
         } else {
             Err(format!("Invalid RetryPolicy '{value}'"))
         }

@@ -462,6 +462,18 @@ impl Protocol {
             Protocol::DoIpDobt => "UDS_Ethernet_DoIP_DOBT",
         }
     }
+
+    #[must_use]
+    pub fn matches(&self, short_name: &str) -> bool {
+        match self {
+            Protocol::DoIp => {
+                short_name == "UDS_Ethernet_DoIP" || short_name == "DoIP"
+            }
+            Protocol::DoIpDobt => {
+                short_name == "UDS_Ethernet_DoIP_DOBT" || short_name == "DoIP"
+            }
+        }
+    }
 }
 
 impl std::fmt::Display for EcuState {
