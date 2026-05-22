@@ -29,12 +29,14 @@ members = [
   "cda-health",
   "integration-tests",
   "cda-build",
+  "cda-web-ui",
   "comm-mbedtls/mbedtls-sys",
   "comm-mbedtls/mbedtls-rs",
 ]
 
 [workspace.dependencies]
 opensovd_cda_lib = { path = "cda-main", package = "opensovd-cda" }
+cda-web-ui = { path = "cda-web-ui" }
 cda-interfaces = { path = "cda-interfaces" }
 cda-core = { path = "cda-core" }
 cda-comm-doip = { path = "cda-comm-doip" }

@@ -139,6 +139,9 @@ async fn main() -> Result<(), AppError> {
 
     tracing::debug!("Webserver is running. Loading sovd routes...");
 
+    #[cfg(feature = "ui")]
+    cda_web_ui::add_ui_routes(&dynamic_router).await;
+
     let vehicle_data = opensovd_cda_lib::load_vehicle_data::<_, DefaultSecurityPluginData>(
         &config,
         clonable_shutdown_signal.clone(),

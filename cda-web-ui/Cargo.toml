@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 The Contributors to Eclipse OpenSOVD (see CONTRIBUTORS)
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+
+[package]
+name = "cda-web-ui"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+description = "Embeds the cda-ui web frontend into the CDA binary"
+homepage.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+cda-sovd = { workspace = true }
+aide = { workspace = true, features = ["axum"] }
+axum = { workspace = true, features = ["http1"] }
+mime_guess = "2"
+rust-embed = "8"
