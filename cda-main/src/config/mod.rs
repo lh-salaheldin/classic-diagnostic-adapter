@@ -42,11 +42,19 @@ pub fn load_config(config_file_path: Option<&str>) -> Result<configfile::Configu
     let config_file = resolve_config_file_path(config_file_path);
     println!("Loading configuration from {config_file}");
 
-    Figment::from(Serialized::defaults(default_config()))
+    let mut config: configfile::Configuration = Figment::from(Serialized::defaults(default_config()))
         .merge(Toml::file(config_file))
         .merge(Env::prefixed("CDA").ignore(&["CDA_CONFIG_FILE"]))
         .extract()
-        .map_err(|e| format!("Failed to build configuration: {e}"))
+        .map_err(|e| format!("Failed to build configuration: {e}"))?;
+
+    // Figment splits on `_` for nesting, so `CDA_SERVER_UNIX_SOCKET` would map
+    // to `server.unix.socket` instead of `server.unix_socket`. Read it directly.
+    if let Ok(socket) = std::env::var("CDA_SERVER_UNIX_SOCKET") {
+        config.server.unix_socket = Some(socket);
+    }
+
+    Ok(config)
 }
 
 #[must_use]

@@ -124,6 +124,11 @@ pub struct AppArgs {
     // two different ways to set booleans (with and without `true`)
     #[arg(long)]
     pub mdd_decompress: Option<bool>,
+
+    /// Bind the SOVD HTTP server to a Unix domain socket instead of TCP.
+    /// When set, TCP address/port are ignored.
+    #[arg(long)]
+    pub unix_socket: Option<String>,
 }
 
 pub struct VehicleData<S: SecurityPlugin> {
@@ -283,6 +288,9 @@ impl AppArgs {
         if let Some(mdd_decompress) = self.mdd_decompress {
             config.flat_buf.mdd_decompress = mdd_decompress;
         }
+        if let Some(unix_socket) = self.unix_socket {
+            config.server.unix_socket = Some(unix_socket);
+        }
     }
 }
 
@@ -424,6 +432,7 @@ where
     let webserver_config = cda_sovd::WebServerConfig {
         host: config.server.address.clone(),
         port: config.server.port,
+        unix_socket: config.server.unix_socket.clone(),
     };
 
     let clonable_shutdown_signal = shutdown_signal().shared();

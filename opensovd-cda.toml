@@ -663,3 +663,5 @@
 # address = "0.0.0.0"
 # TCP port the server listens on.
 # port = 20002
+# Unix domain socket path. When set, binds exclusively to this socket instead of TCP.
+# unix_socket = "/run/cda.sock"

@@ -54,6 +54,20 @@ pub const OPENAPI_JSON_ROUTE: &str = "/openapi.json";
 pub struct WebServerConfig {
     pub host: String,
     pub port: u16,
+    /// When set, the server binds to this Unix domain socket path instead of TCP.
+    pub unix_socket: Option<String>,
+}
+
+impl WebServerConfig {
+    /// Returns the server URL for use in API documentation and logging.
+    /// For Unix socket mode this is a placeholder since there is no TCP address.
+    #[must_use]
+    pub fn server_url(&self) -> String {
+        match &self.unix_socket {
+            Some(path) => format!("http+unix://{path}"),
+            None => format!("http://{}:{}", self.host, self.port),
+        }
+    }
 }
 
 /// Static configuration for vehicle SOVD routes.
@@ -87,6 +101,7 @@ pub struct VehicleResources<T, M> {
     fields(
         host = %config.host,
         port = %config.port,
+        unix_socket = %config.unix_socket.as_deref().unwrap_or("none"),
     )
 )]
 pub async fn launch_webserver<F>(
@@ -97,10 +112,80 @@ where
     F: Future<Output = ()> + Clone + Send + 'static,
 {
     let dynamic_router = DynamicRouter::new();
+
+    if let Some(ref socket_path) = config.unix_socket {
+        #[cfg(not(unix))]
+        return Err(DoipGatewaySetupError::ServerError(
+            "Unix domain sockets are not supported on this platform".to_string(),
+        ));
+
+        #[cfg(unix)]
+        {
+            let socket_path = socket_path.clone();
+
+            // It is the caller's responsibility to ensure the socket path is free.
+            // If it exists (file, socket, or dangling symlink), refuse to start.
+            if std::path::Path::new(&socket_path)
+                .symlink_metadata()
+                .is_ok()
+            {
+                return Err(DoipGatewaySetupError::ServerError(format!(
+                    "Unix socket path already exists: {socket_path}. Remove it before starting the server."
+                )));
+            }
+
+            let listener =
+                tokio::net::UnixListener::bind(&socket_path).map_err(|e| {
+                    DoipGatewaySetupError::ServerError(format!(
+                        "Failed to bind to Unix socket {socket_path}: {e}"
+                    ))
+                })?;
+
+            tracing::info!("SOVD webserver listening on {socket_path}");
+
+            let dynamic_router_for_service = dynamic_router.clone();
+            let webserver_task = cda_interfaces::spawn_named!("webserver", async move {
+                let service =
+                    tower::service_fn(move |request: Request<axum::body::Body>| {
+                        let dr = dynamic_router_for_service.clone();
+                        async move {
+                            let router = dr.get_router().await;
+                            TowerServiceExt::oneshot(router, request).await
+                        }
+                    });
+
+                let middleware = tower::util::MapRequestLayer::new(rewrite_request_uri);
+                let trim_trailing_slash_middleware =
+                    NormalizePathLayer::trim_trailing_slash();
+                let service_with_middleware =
+                    middleware.layer(trim_trailing_slash_middleware.layer(service));
+
+                let _ = axum::serve(
+                    listener,
+                    tower::make::Shared::new(service_with_middleware),
+                )
+                .with_graceful_shutdown(shutdown_signal)
+                .await;
+
+                if let Err(e) = std::fs::remove_file(&socket_path) {
+                    tracing::warn!(error = %e, "Failed to remove Unix socket file on shutdown");
+                }
+            });
+
+            return Ok((dynamic_router, webserver_task));
+        }
+    }
+
+    // TCP mode (default)
     let listen_address = format!("{}:{}", config.host, config.port);
     let listener = TcpListener::bind(&listen_address).await.map_err(|e| {
         DoipGatewaySetupError::ServerError(format!("Failed to bind to {listen_address}: {e}"))
     })?;
+
+    let local_addr = listener.local_addr().map_err(|e| {
+        DoipGatewaySetupError::ServerError(format!("Failed to get local address: {e}"))
+    })?;
+    tracing::info!("SOVD webserver listening on {local_addr}");
 
     let dynamic_router_for_service = dynamic_router.clone();
     let webserver_task = cda_interfaces::spawn_named!("webserver", async move {
@@ -219,10 +304,7 @@ pub async fn add_openapi_routes(
     _update_guard: &UpdateGuardState,
     web_server_config: &WebServerConfig,
 ) {
-    let server_url = format!(
-        "http://{}:{}",
-        web_server_config.host, web_server_config.port
-    );
+    let server_url = web_server_config.server_url();
     let dr = dynamic_router.clone();
     dynamic_router
         .add_finalizer(Arc::new(move |router: axum::Router| -> axum::Router {

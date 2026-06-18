@@ -189,6 +189,9 @@ pub struct ServerConfig {
     pub address: String,
     /// TCP port the server listens on.
     pub port: u16,
+    /// Path to a Unix domain socket. When set, the server binds exclusively
+    /// to this socket instead of the TCP address/port.
+    pub unix_socket: Option<String>,
 }
 
 pub trait ConfigSanity {
@@ -215,6 +218,7 @@ impl Default for Configuration {
             server: ServerConfig {
                 address: "0.0.0.0".to_owned(),
                 port: 20002,
+                unix_socket: None,
             },
             #[cfg(feature = "health")]
             health: cda_health::config::HealthConfig::default(),
